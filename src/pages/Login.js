@@ -11,6 +11,8 @@ import {
   Google as GoogleIcon, Email as EmailIcon
 } from "@mui/icons-material";
 
+import { GoogleLogin } from '@react-oauth/google'
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,21 +55,21 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
-  
+
     try {
       const response = await axios.post(
         "https://r0rvz7pf-3000.inc1.devtunnels.ms/api/auth/login",
         { email, password }
       );
-  
+
       const { accessToken, refreshToken } = response.data.data;
       if (!accessToken) throw new Error("Token not received from server");
-  
+
       // Save tokens to localStorage
       localStorage.setItem("token", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       login(accessToken);
-  
+
       // Fetch user details
       const userDetailsResponse = await axios.get(
         "https://r0rvz7pf-3000.inc1.devtunnels.ms/api/user/loggedUser",
@@ -75,9 +77,9 @@ const Login = () => {
         //   headers: { Authorization: `Bearer ${accessToken}` }
         // }
       );
-  
+
       const { role } = userDetailsResponse.data.data;
-  
+
       // Redirect based on role
       switch (role) {
         case "Admin":
@@ -100,11 +102,34 @@ const Login = () => {
       setLoading(false);
     }
   };
-  
 
-  const handleGoogleLogin = () => {
-    setGoogleLoading(true);
-    window.location.href = "https://r0rvz7pf-3000.inc1.devtunnels.ms/api/auth/google";
+
+  const handleGoogleLogin = async (token) => {
+    // setGoogleLoading(true);
+
+    try {
+      const response = await axios.post(
+        "https://r0rvz7pf-3000.inc1.devtunnels.ms/api/auth/idtoken", { token }
+      );
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+      }
+
+      if (response?.data?.user?.role === "Admin") {
+        navigate('/admin')
+      } else if (response?.data?.user?.role === "Agent") {
+        navigate('/agent')
+      } else if (response?.data?.user?.role === "Vendor") {
+        navigate('/vendor')
+      }
+
+      return response.data;
+    }
+    catch (error) {
+      console.log("error", error)
+    }
+
+    // window.location.href = "https://r0rvz7pf-3000.inc1.devtunnels.ms/api/auth/google";
   };
 
   return (
@@ -125,7 +150,7 @@ const Login = () => {
             Welcome Back
           </Typography>
 
-          <Button
+          {/* <Button
             fullWidth
             variant="outlined"
             startIcon={<GoogleIcon style={{ color: "#4285F4" }} />}
@@ -134,7 +159,16 @@ const Login = () => {
             sx={{ py: 1.5, borderRadius: 2 }}
           >
             {googleLoading ? <CircularProgress size={24} /> : "Continue with Google"}
-          </Button>
+          </Button> */}
+          <GoogleLogin
+            onSuccess={(token) => handleGoogleLogin(token?.credential)}
+            size='large'
+            logo_alignment='center'
+            theme="outline"
+            text="signin_with"
+            shape="rectangular"
+            width="100%"
+          />
 
           <Divider sx={{ my: 3 }}>OR</Divider>
 
